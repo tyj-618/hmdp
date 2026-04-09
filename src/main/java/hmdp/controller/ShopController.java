@@ -1,22 +1,19 @@
 package hmdp.controller;
 
-import hmdp.entity.Shop;
+import hmdp.dto.Result;
 import hmdp.service.IShopService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import jakarta.annotation.Resource;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/shop")
 public class ShopController {
 
-    @Autowired
+    @Resource
     private IShopService shopService;
 
     @GetMapping("/{id}")
-    public Shop queryShopById(@PathVariable("id") Long id) {
-        return shopService.getById(id);
+    public Result queryShopById(@PathVariable("id") Long id) {
+        return shopService.queryById(id);
     }
 }
