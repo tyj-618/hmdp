@@ -1,7 +1,6 @@
 package hmdp.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
-import hmdp.mapper.ShopMapper;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
