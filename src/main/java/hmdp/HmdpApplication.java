@@ -1,9 +1,11 @@
 package hmdp;
 
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
+@MapperScan("hmdp.mapper")
 public class HmdpApplication {
 
     public static void main(String[] args) {
