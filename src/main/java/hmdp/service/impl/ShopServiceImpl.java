@@ -110,15 +110,20 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
             }
 
             //7.查数据库
-            //System.out.println("查询数据库...");
+            System.out.println("查询数据库...");
             shop = getById(id);
 
             //8.数据库不存在，写空值
             if (shop == null) {
                 stringRedisTemplate.opsForValue()
-                        .set(key, JSONUtil.toJsonStr(shop), CACHE_SHOP_TTL, TimeUnit.MINUTES);
+                        .set(key, "", CACHE_SHOP_TTL, TimeUnit.MINUTES);
                 return null;
             }
+
+            //9.数据库存在，写入Redis
+            stringRedisTemplate.opsForValue()
+                    .set(key, JSONUtil.toJsonStr(shop), CACHE_SHOP_TTL, TimeUnit.MINUTES);
+            return shop;
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         } finally {
@@ -127,8 +132,6 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
                 unlock(lockKey);
             }
         }
-
-        return shop;
     }
 
     private boolean tryLock(String key) {
