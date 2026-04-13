@@ -10,6 +10,7 @@ import hmdp.service.IShopService;
 import jakarta.annotation.Resource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.concurrent.TimeUnit;
 
@@ -56,5 +57,19 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         //7.返回
         return Result.ok(shop);
 
+    }
+
+    @Transactional
+    @Override
+    public Result updateShop(Shop shop) {
+        Long id= shop.getId();
+        if (id == null) {
+            return Result.fail("店铺id不能为空");
+        }
+
+        updateById(shop);
+        stringRedisTemplate.delete(CACHE_SHOP_KEY + id);
+
+        return Result.ok();
     }
 }
