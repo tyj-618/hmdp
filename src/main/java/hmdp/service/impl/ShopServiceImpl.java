@@ -1,23 +1,16 @@
 package hmdp.service.impl;
 
-import cn.hutool.core.util.BooleanUtil;
-import cn.hutool.core.util.StrUtil;
-import cn.hutool.json.JSONObject;
-import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import hmdp.dto.RedisData;
 import hmdp.dto.Result;
 import hmdp.entity.Shop;
 import hmdp.mapper.ShopMapper;
 import hmdp.service.IShopService;
+import hmdp.utils.CacheClient;
 import jakarta.annotation.Resource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
 import static hmdp.utils.RedisConstants.*;
@@ -26,7 +19,29 @@ import static hmdp.utils.RedisConstants.*;
 public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IShopService {
 
     @Resource
+    private CacheClient cacheClient;
+
+    @Resource
     private StringRedisTemplate stringRedisTemplate;
+
+    @Override
+    public Result queryById(Long id) {
+        Shop shop = cacheClient.queryWithPassThrough(
+                CACHE_SHOP_KEY,
+                id,
+                Shop.class,
+                this::getById,
+                CACHE_SHOP_TTL,
+                TimeUnit.SECONDS
+        );
+        if (shop == null) {
+            return Result.fail("店铺不存在！");
+        }
+        return Result.ok(shop);
+    }
+
+    /*@Resource
+    private StringRedisTemplate stringRedisTemplate;*/
 
     /*@Override
     public Result queryById(Long id) {
@@ -64,7 +79,7 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
         return Result.ok(shop);
 
     }*/
-    @Override
+    /*@Override
     public Result queryById(Long id) {
         Shop shop = queryWithMutex(id);
         if (shop == null) {
@@ -206,7 +221,7 @@ public class ShopServiceImpl extends ServiceImpl<ShopMapper, Shop> implements IS
 
         //7.返回数据
         return shop;
-    }
+    }*/
 
     @Transactional
     @Override
