@@ -27,6 +27,7 @@
   - 实现了逻辑过期
   - 拆分ShopServiceImpl里的方法到工具类CacheClient中
   - 实现ShopType的整表查询
+  - 补全User相关类并实现根据手机号生成验证码
   - 
 
 
