@@ -177,7 +177,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         int count = 0;
         while(true) {
             //判断最低位是否为0
-            if((num % 1) == 0) {
+            if((num & 1) == 0) {
                 break;
             } else {
                 count++;
