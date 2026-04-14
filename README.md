@@ -25,6 +25,7 @@
   - 测试了select和update功能
 - 4.14
   - 实现了逻辑过期
+  - 拆分ShopServiceImpl里的方法到工具类CacheClient中
   - 
 
 
