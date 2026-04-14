@@ -3,6 +3,7 @@ package hmdp.controller;
 import hmdp.dto.LoginFormDTO;
 import hmdp.dto.Result;
 import hmdp.service.IUserService;
+import hmdp.utils.UserHolder;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.web.bind.annotation.*;
@@ -22,5 +23,10 @@ public class UserController {
     @PostMapping("/login")
     public Result login(@RequestBody LoginFormDTO loginForm, HttpSession session) {
         return userService.login(loginForm, session);
+    }
+
+    @GetMapping("/me")
+    public Result me() {
+        return Result.ok(UserHolder.getUser());
     }
 }
