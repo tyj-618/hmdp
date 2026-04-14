@@ -11,12 +11,15 @@ import hmdp.entity.User;
 import hmdp.mapper.UserMapper;
 import hmdp.service.IUserService;
 import hmdp.utils.RegexUtils;
+import hmdp.utils.UserHolder;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
@@ -115,5 +118,31 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
         user.setNickName(USER_NICK_NAME_PREFIX + RandomUtil.randomString(10));
         save(user);
         return user;
+    }
+
+    @Override
+    public Result sign() {
+        //1.获取当前登录用户
+        Long userId = UserHolder.getUser().getId();
+
+        //2.获取当前日期
+        LocalDateTime now = LocalDateTime.now();
+
+        //3.拼接key
+        String key = SIGN_USER_KEY + userId + ":" + now.format(DateTimeFormatter.ofPattern("yyyyMM"));
+
+        //4.获取今天是本月的第几天
+        int dayOfMonth = now.getDayOfMonth();
+
+        //5.写入 Redis Bitmap
+        stringRedisTemplate.opsForValue().setBit(key, dayOfMonth - 1, true);
+
+        //6.返回结果
+        return Result.ok();
+    }
+
+    @Override
+    public Result signCount() {
+        return null;
     }
 }
