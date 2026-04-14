@@ -14,6 +14,8 @@ public class ShopType {
     @TableId(value = "id", type = IdType.AUTO)
     private Long id;
 
+    private String name;
+
     private String icon;
 
     private Integer sort;

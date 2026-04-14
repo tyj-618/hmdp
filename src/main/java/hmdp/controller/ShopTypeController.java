@@ -15,7 +15,7 @@ public class ShopTypeController {
     private IShopTypeService typeService;
 
     @GetMapping("/list")
-    public Result queryTypeLost() {
+    public Result queryTypeList() {
         return typeService.queryTypeList();
     }
 }

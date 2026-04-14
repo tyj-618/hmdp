@@ -26,6 +26,7 @@
 - 4.14
   - 实现了逻辑过期
   - 拆分ShopServiceImpl里的方法到工具类CacheClient中
+  - 实现ShopType的整表查询
   - 
 
 
