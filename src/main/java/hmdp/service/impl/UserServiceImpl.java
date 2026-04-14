@@ -1,9 +1,12 @@
 package hmdp.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
+import cn.hutool.core.lang.UUID;
 import cn.hutool.core.util.RandomUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import hmdp.dto.LoginFormDTO;
 import hmdp.dto.Result;
+import hmdp.dto.UserDTO;
 import hmdp.entity.User;
 import hmdp.mapper.UserMapper;
 import hmdp.service.IUserService;
@@ -14,10 +17,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
-import static hmdp.utils.RedisConstants.LOGIN_CODE_KEY;
-import static hmdp.utils.RedisConstants.LOGIN_CODE_TTL;
+import static hmdp.utils.RedisConstants.*;
+import static hmdp.utils.SystemConstants.USER_NICK_NAME_PREFIX;
 
 @Slf4j
 @Service
@@ -52,6 +57,63 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public Result login(LoginFormDTO loginForm, HttpSession session) {
-        return null;
+        //1.检验手机号
+        String phone = loginForm.getPhone();
+        if (RegexUtils.isPhoneInvalid(phone)) {
+            return Result.fail("手机号格式错误！");
+        }
+
+        //2.从Redis获取验证码并校验
+        String cacheCode = stringRedisTemplate.opsForValue().get(LOGIN_CODE_KEY + phone);
+        String code = loginForm.getCode();
+        if (cacheCode == null || !cacheCode.equals(code)) {
+            return Result.fail("验证码错误！");
+        }
+
+        //验证码校验通过后，删除验证码
+        stringRedisTemplate.delete(LOGIN_CODE_KEY + phone);
+
+        //3.根据手机号查询用户
+        User user = query().eq("phone", phone).one();
+
+        //4.用户不存在，自动注册
+        if (user == null) {
+            user = createUserWithPhone(phone);
+        }
+
+        //5.生成token
+        String token = UUID.randomUUID().toString(true);
+
+
+
+        //6.将 User 转为 UserDTO
+        UserDTO userDTO = BeanUtil.copyProperties(user, UserDTO.class);
+
+        //7.将UserDTO转为Map
+        Map<String, Object> userMap = BeanUtil.beanToMap(
+                userDTO,
+                new HashMap<>(),
+                cn.hutool.core.bean.copier.CopyOptions.create()
+                        .setIgnoreNullValue(true)
+                        .setFieldValueEditor((fieldName, fieldValue) -> fieldValue == null ? null : fieldValue.toString())
+        );
+
+        //8.保存用户信息到Redis
+        String tokenKey = LOGIN_USER_KEY + token;
+        stringRedisTemplate.opsForHash().putAll(tokenKey, userMap);
+
+        //9.设置token有效期
+        stringRedisTemplate.expire(tokenKey, LOGIN_USER_TTL, TimeUnit.MINUTES);
+
+        //10.返回token
+        return Result.ok(token);
+    }
+
+    private User createUserWithPhone(String phone) {
+        User user = new User();
+        user.setPhone(phone);
+        user.setNickName(USER_NICK_NAME_PREFIX + RandomUtil.randomString(10));
+        save(user);
+        return user;
     }
 }
