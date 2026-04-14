@@ -15,12 +15,14 @@ import hmdp.utils.UserHolder;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpSession;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.connection.BitFieldSubCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
@@ -143,6 +145,48 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements IU
 
     @Override
     public Result signCount() {
-        return null;
+        //1.获取当前登录用户
+        Long userId = UserHolder.getUser().getId();
+
+        //2.获取当前日期
+        LocalDateTime now = LocalDateTime.now();
+
+        //3.拼接key
+        String key = SIGN_USER_KEY + userId + ":" + now.format(DateTimeFormatter.ofPattern("yyyyMM"));
+
+        //4.获取今天是本月的第几天
+        int dayOfMonth = now.getDayOfMonth();
+
+        //5.获取本月截至今天的所有见到记录，返回的是一个十进制数字
+        List<Long> result = stringRedisTemplate.opsForValue().bitField(
+                key,
+                BitFieldSubCommands.create()
+                        .get(BitFieldSubCommands.BitFieldType.unsigned(dayOfMonth)).valueAt(0)
+        );
+
+        //6.判空
+        if (result == null || result.isEmpty()) {
+            return Result.ok(0);
+        }
+        Long num = result.get(0);
+        if (num == null || num == 0) {
+            return Result.ok(0);
+        }
+
+        //7.循环遍历，统计连续签到的天数
+        int count = 0;
+        while(true) {
+            //判断最低位是否为0
+            if((num % 1) == 0) {
+                break;
+            } else {
+                count++;
+            }
+            //右移一位，继续下一个bit
+            num >>>= 1;
+        }
+
+        //8.返回结果
+        return Result.ok(count);
     }
 }
