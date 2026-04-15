@@ -1,8 +1,10 @@
 package hmdp.service.impl;
 
+import cn.hutool.core.bean.BeanUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import hmdp.dto.Result;
+import hmdp.dto.UserDTO;
 import hmdp.entity.Blog;
 import hmdp.entity.User;
 import hmdp.mapper.BlogMapper;
@@ -13,7 +15,10 @@ import jakarta.annotation.Resource;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static hmdp.utils.RedisConstants.BLOG_LIKED_KEY;
 import static hmdp.utils.SystemConstants.MAX_PAGE_SIZE;
@@ -40,6 +45,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         //3.补充作者信息
         for (Blog blog : records) {
             queryBlogUser(blog);
+            isBlogLiked(blog);
         }
 
         //4.返回结果
@@ -56,6 +62,7 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 
         //2.补充作者信息
         queryBlogUser(blog);
+        isBlogLiked(blog);
 
         //3.返回
         return Result.ok(blog);
@@ -91,7 +98,32 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 
     @Override
     public Result queryBlogLikes(Long id) {
-        return null;
+        //1.拼接key
+        String key = BLOG_LIKED_KEY + id;
+
+        //2.查询前5个点赞用户
+        Set<String> top5 = stringRedisTemplate.opsForZSet().range(key, 0, 4);
+        if (top5 == null || top5.isEmpty()) {
+            return Result.ok(Collections.emptyList());
+        }
+
+        //3.解析出其中的用户id
+        List<Long> ids = top5.stream().map(Long::valueOf).collect(Collectors.toList());
+
+        //4.拼接id字符串，保证查询结果顺序与Redis中一致
+        String idStr = ids.stream().map(String::valueOf).collect(Collectors.joining(","));
+
+        //5.根据用户id查询用户
+        List<UserDTO> userDTOS = userService.query()
+                .in("id", ids)
+                .last("ORDER BY FIELD(id," + idStr + ")")
+                .list()
+                .stream()
+                .map(user -> BeanUtil.copyProperties(user, UserDTO.class))
+                .collect(Collectors.toList());
+
+        //6.返回
+        return Result.ok(userDTOS);
     }
 
     private void queryBlogUser(Blog blog) {
@@ -102,5 +134,25 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
         }
         blog.setName(user.getNickName());
         blog.setIcon(user.getIcon());
+    }
+
+    private void isBlogLiked(Blog blog) {
+        //1.获取当前登录用户
+        UserDTO user = UserHolder.getUser();
+        if (user == null) {
+            return;
+        }
+
+        //2.获取用户id
+        Long userId = user.getId();
+
+        //3.拼接key
+        String key = BLOG_LIKED_KEY + blog.getId();
+
+        //4.判断是否点赞
+        Double score = stringRedisTemplate.opsForZSet().score(key, userId.toString());
+
+        //5.赋值
+        blog.setIsLike(score != null);
     }
 }
