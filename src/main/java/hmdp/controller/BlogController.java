@@ -1,6 +1,7 @@
 package hmdp.controller;
 
 import hmdp.dto.Result;
+import hmdp.entity.Blog;
 import hmdp.service.IBlogService;
 import jakarta.annotation.Resource;
 import org.springframework.web.bind.annotation.*;
@@ -30,5 +31,17 @@ public class BlogController {
     @GetMapping("/likes/{id}")
     public Result queryBlogLikes(@PathVariable("id") Long id) {
         return blogService.queryBlogLikes(id);
+    }
+
+    @PostMapping
+    public Result saveBlog(@RequestBody Blog blog) {
+        return blogService.saveBlog(blog);
+    }
+
+    @GetMapping("/of/follow")
+    public Result queryBlogOfFollow(
+            @RequestParam("lastId") Long max,
+            @RequestParam(value = "offset", defaultValue = "0") Integer offset) {
+        return blogService.queryBlogOfFollow(max, offset);
     }
 }
