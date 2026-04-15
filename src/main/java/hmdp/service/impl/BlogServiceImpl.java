@@ -8,11 +8,14 @@ import hmdp.entity.User;
 import hmdp.mapper.BlogMapper;
 import hmdp.service.IBlogService;
 import hmdp.service.IUserService;
+import hmdp.utils.UserHolder;
 import jakarta.annotation.Resource;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
+import static hmdp.utils.RedisConstants.BLOG_LIKED_KEY;
 import static hmdp.utils.SystemConstants.MAX_PAGE_SIZE;
 
 @Service
@@ -20,6 +23,9 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 
     @Resource
     private IUserService userService;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     @Override
     public Result queryHotBlog(Integer current) {
@@ -57,7 +63,30 @@ public class BlogServiceImpl extends ServiceImpl<BlogMapper, Blog> implements IB
 
     @Override
     public Result likeBlog(Long id) {
-        return null;
+        //1.获取当前登录用户
+        Long userId = UserHolder.getUser().getId();
+
+        //2.拼接key
+        String key = BLOG_LIKED_KEY + id;
+
+        //3.判断当前用户是否已经点赞
+        Double score = stringRedisTemplate.opsForZSet().score(key, userId.toString());
+
+        if (score == null) {
+            //4.未点赞，可以点赞
+            boolean isSuccess = update().setSql("liked = liked + 1").eq("id", id).update();
+            if (isSuccess) {
+                stringRedisTemplate.opsForZSet().add(key, userId.toString(), System.currentTimeMillis());
+            }
+        } else {
+            //5.已点赞，取消点赞
+            boolean isSuccess = update().setSql("liked = liked - 1").eq("id", id).update();
+            if (isSuccess) {
+                stringRedisTemplate.opsForZSet().remove(key, userId.toString());
+            }
+        }
+
+        return Result.ok();
     }
 
     @Override
