@@ -5,8 +5,16 @@ import hmdp.service.impl.ShopServiceImpl;
 import jakarta.annotation.Resource;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.geo.Point;
+import org.springframework.data.redis.connection.RedisGeoCommands;
 import org.springframework.data.redis.core.StringRedisTemplate;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+import static hmdp.utils.RedisConstants.SHOP_GEO_KEY;
 
 @SpringBootTest
 class HmdpApplicationTests {
@@ -18,47 +26,27 @@ class HmdpApplicationTests {
     private StringRedisTemplate stringRedisTemplate;
 
     @Test
-    void testSaveShop2Redis() {
-        shopService.saveShop2Redis(1L, 30L);
+    void loadShopData() {
+        List<Shop> list = shopService.list();
+        Map<Long, List<Shop>> map = list.stream().collect(Collectors.groupingBy(Shop::getTypeId));
 
-        String key = "cache:shop:1";
-        String json = stringRedisTemplate.opsForValue().get(key);
-        System.out.println("Redis中的值：" + json);
-    }
+        for (Map.Entry<Long, List<Shop>> entry : map.entrySet()) {
+            Long typeId = entry.getKey();
+            List<Shop> shopList = entry.getValue();
 
-    @Test
-    void testQueryWithLogicalExpireNotExpired() {
-        // 先预热，设置30秒逻辑过期
-        shopService.saveShop2Redis(1L, 30L);
+            String key = SHOP_GEO_KEY + typeId;
+            List<RedisGeoCommands.GeoLocation<String>> locations = new ArrayList<>(shopList.size());
 
-        // 立刻查询，此时还没过期
-        Shop shop = shopService.queryWithLogicalExpire(1L);
-        System.out.println("未过期时查询结果：" + shop);
-    }
+            for (Shop shop : shopList) {
+                locations.add(
+                        new RedisGeoCommands.GeoLocation<>(
+                                shop.getId().toString(),
+                                new Point(shop.getX(), shop.getY())
+                        )
+                );
+            }
 
-    @Test
-    void testQueryWithLogicalExpireExpired() throws Exception {
-        // 1. 先预热，设置5秒逻辑过期，方便测试
-        shopService.saveShop2Redis(1L, 5L);
-
-        String key = "cache:shop:1";
-
-        // 2. 先读一次，看看旧的 expireTime
-        String oldJson = stringRedisTemplate.opsForValue().get(key);
-        System.out.println("过期前Redis数据：" + oldJson);
-
-        // 3. 等待逻辑过期
-        Thread.sleep(6000);
-
-        // 4. 查询过期数据
-        Shop shop = shopService.queryWithLogicalExpire(1L);
-        System.out.println("已过期时查询结果：" + shop);
-
-        // 5. 给异步重建线程一点时间
-        Thread.sleep(1000);
-
-        // 6. 再读一次Redis，查看 expireTime 是否刷新
-        String newJson = stringRedisTemplate.opsForValue().get(key);
-        System.out.println("重建后Redis数据：" + newJson);
+            stringRedisTemplate.opsForGeo().add(key, locations);
+        }
     }
 }
