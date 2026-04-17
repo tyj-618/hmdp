@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @TableName("tb_voucher_order")
 public class VoucherOrder {
 
-    @TableId(value = "id", type = IdType.AUTO)
+    @TableId(value = "id", type = IdType.INPUT)
     private Long id;
 
     private Long userId;
