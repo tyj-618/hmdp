@@ -8,6 +8,7 @@ import hmdp.mapper.VoucherMapper;
 import hmdp.service.ISeckillVoucherService;
 import hmdp.service.IVoucherService;
 import jakarta.annotation.Resource;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,6 +19,9 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
 
     @Resource
     private ISeckillVoucherService seckillVoucherService;
+
+    @Resource
+    private StringRedisTemplate stringRedisTemplate;
 
     @Override
     public Result queryVoucherOfShop(Long shopId) {
@@ -40,5 +44,11 @@ public class VoucherServiceImpl extends ServiceImpl<VoucherMapper, Voucher> impl
 
         //3.保存秒杀信息到 tb_seckill_voucher
         seckillVoucherService.save(seckillVoucher);
+
+        //4.保存到Redis
+        stringRedisTemplate.opsForValue().set(
+                "seckill:stock:" + voucher.getId(),
+                voucher.getStock().toString()
+        );
     }
 }
