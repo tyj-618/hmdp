@@ -5,9 +5,37 @@
 ## 技术栈
 
 - Spring Boot
-- Maven
+- Mybatis-Plus
 - MySQL
 - Redis
+- Redisson
+- Maven
+
+## 模块总览
+- 登录与拦截
+- 商铺缓存
+- 博客与关注
+- GEO
+- 签到
+- 秒杀
+- UV统计
+
+## 秒杀流程
+- 前端请求进入 `seckillVoucher()`
+- 校验活动时间
+- 执行Lua
+- Lua写入 `stream.orders`
+- 消费组消费消息
+- 事务落库并ACK，异常时处理 pending-list
+
+## 测试说明
+- 第一次秒杀成功
+- 同一用户重复下单失败
+- 库存不足失败
+- Stream 消费成功
+- pending-list 补偿成功
+- UV 记录成功
+- UV 查询成功
 
 ## 当前进度
 - 4.8
@@ -55,10 +83,8 @@
   - 实现lua原子校验
   - 实现异步下单（阻塞队列版）
 - 4.21
-  - Redis Stream
+  - Redis Stream 异步下单与 pending-list 补偿
   - UV统计
-  - 
-
 
 ## 进阶功能（暂时忽略）
 - 忽略了RabbitMQ功能
